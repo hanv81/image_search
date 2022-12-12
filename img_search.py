@@ -1,7 +1,6 @@
-from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from imutils import paths
 import numpy as np
-import argparse
 import cv2
 import time
 import vptree
@@ -35,7 +34,7 @@ def create_hash():
     batch_size = 100
     hashes = {}
     imagePaths = list(paths.list_images("images"))
-    with PoolExecutor() as executor:
+    with ThreadPoolExecutor() as executor:
         for i in range(0, len(imagePaths), batch_size):
             executor.submit(batch_hashing, hashes, imagePaths[i : i + batch_size])
 
