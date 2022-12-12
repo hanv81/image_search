@@ -19,11 +19,14 @@ def convert_hash(h):
 def hamming(a, b):
 	return bin(int(a) ^ int(b)).count("1")
 
+def hash_file(path):
+    image = cv2.imread(path)
+    h = dhash(image)
+    return convert_hash(h)
+
 def batch_hashing(hashes, file_paths):
     for path in file_paths:
-        image = cv2.imread(path)
-        h = dhash(image)
-        h = convert_hash(h)
+        h = hash_file(path)
         p = hashes.get(h, [])
         p.append(path)
         hashes[h] = p
@@ -75,5 +78,4 @@ if __name__ == "__main__":
     # tree = build_vptree(hashes)
 
     hashes, tree = load_hashes_and_vptree()
-    imagePaths = list(paths.list_images("full"))
     search_near_duplicate(hashes, tree)
