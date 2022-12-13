@@ -1,3 +1,7 @@
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from img2vec_pytorch import Img2Vec
+from dataset import ImageDataset
 from concurrent.futures import ThreadPoolExecutor
 from imutils import paths
 import numpy as np
@@ -73,9 +77,28 @@ def search_near_duplicate(hashes, tree):
                 if d > 0:
                     print(f'\t{hashes[hh]} {d}')
 
+def create_image_vectors():
+    i2v = Img2Vec()
+    dataset = ImageDataset('images')
+    dataloader = DataLoader(dataset, batch_size=32)
+    vectors = None
+    img_paths = []
+    for i, (images, list_paths) in enumerate(dataloader):
+        print(f'Loading batch {i}')
+        img_paths.extend(list_paths)
+        images = [transforms.ToPILImage()(image) for image in images]
+        if vectors is None:
+            vectors = i2v.get_vec(images)
+        else:
+            vectors = np.concatenate((vectors, i2v.get_vec(images)), axis = 0)
+
+    return vectors, img_paths
+
 if __name__ == "__main__":
     # hashes = create_hash()
     # tree = build_vptree(hashes)
 
-    hashes, tree = load_hashes_and_vptree()
-    search_near_duplicate(hashes, tree)
+    # hashes, tree = load_hashes_and_vptree()
+    # search_near_duplicate(hashes, tree)
+
+    vectors, img_paths = create_image_vectors()

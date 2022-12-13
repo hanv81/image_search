@@ -3,15 +3,14 @@ from torchvision.io import read_image
 from imutils import paths
 
 class ImageDataset(Dataset):
-    def __init__(self, img_dir, transform=None, target_transform=None):
+    def __init__(self, img_dir):
         self.img_dir = img_dir
-        self.transform = transform
-        self.target_transform = target_transform
+        self.list_paths = list(paths.list_images(self.img_dir))
 
     def __len__(self):
-        return len(list(paths.list_images(self.img_dir)))
+        return len(self.list_paths)
 
     def __getitem__(self, i):
-        img_paths = list(paths.list_images(self.img_dir))
-        image = read_image(img_paths[i])
-        return image
+        path = self.list_paths[i]
+        image = read_image(path)
+        return image, path
