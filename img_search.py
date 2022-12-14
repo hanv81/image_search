@@ -12,6 +12,7 @@ import pickle
 import faiss
 import os
 import shutil
+import argparse
 
 def dhash(image, hashSize=8):
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -38,12 +39,12 @@ def batch_hashing(hashes, file_paths):
         p.append(path)
         hashes[h] = p
 
-def create_hash():
+def create_hash(image_path):
     print("Hashing images...")
     t = time.time()
     batch_size = 100
     hashes = {}
-    imagePaths = list(paths.list_images("images"))
+    imagePaths = list(paths.list_images(image_path))
     with ThreadPoolExecutor() as executor:
         for i in range(0, len(imagePaths), batch_size):
             executor.submit(batch_hashing, hashes, imagePaths[i : i + batch_size])
@@ -84,9 +85,9 @@ def search_near_duplicate(hashes, tree):
                 if d > 0:
                     print(f'\t{hashes[hh]} {d}')
 
-def create_image_vectors():
+def create_image_vectors(image_path):
     i2v = Img2Vec()
-    dataset = ImageDataset('images')
+    dataset = ImageDataset(image_path)
     dataloader = DataLoader(dataset, batch_size=32)
     vectors = None
     img_paths = []
@@ -124,14 +125,25 @@ def search_similar(index, image_path, query_path):
             print(f'\t {img_paths[j]}')
             shutil.copy(img_paths[j], query_img_paths[i]+'_')
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--mode', type = str, default = 'similar')
+    parser.add_argument('--images', type = str, default = 'images')
+    parser.add_argument('--query', type = str, default = 'query')
+    args = parser.parse_known_args()[0]
+    return args.mode, args.images, args.query
+
 if __name__ == "__main__":
-    # hashes = create_hash()
-    # tree = build_vptree(hashes)
+    mode, image_path, query_path = parse_args()
+    if mode == 'duplicate':
+        hashes = create_hash(image_path)
+        tree = build_vptree(hashes)
 
-    # hashes, tree = load_hashes_and_vptree()
-    # search_near_duplicate(hashes, tree)
-
-    # vectors = create_image_vectors()
-    vectors = load_image_vectors()
-    index = create_faiss_index(vectors)
-    search_similar(index, 'images', 'query')
+        # hashes, tree = load_hashes_and_vptree()
+        search_near_duplicate(hashes, tree)
+    else:
+        vectors = create_image_vectors(image_path)
+        # vectors = load_image_vectors()
+        index = create_faiss_index(vectors)
+        search_similar(index, image_path, query_path)
