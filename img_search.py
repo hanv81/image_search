@@ -9,6 +9,9 @@ import cv2
 import time
 import vptree
 import pickle
+import faiss
+import os
+import shutil
 
 def dhash(image, hashSize=8):
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -68,6 +71,10 @@ def load_hashes_and_vptree():
     hashes = pickle.loads(open("hashes.pickle", "rb").read())
     return hashes, tree
 
+def load_image_vectors():
+    vectors = pickle.loads(open("vectors.pickle", "rb").read())
+    return vectors
+
 def search_near_duplicate(hashes, tree):
     for h in hashes.keys():
         results = tree.get_all_in_range(h, 4)
@@ -92,7 +99,30 @@ def create_image_vectors():
         else:
             vectors = np.concatenate((vectors, i2v.get_vec(images)), axis = 0)
 
-    return vectors, img_paths
+    f = open("vectors.pickle", "wb")
+    f.write(pickle.dumps(vectors))
+    f.close()
+    return vectors
+
+def create_faiss_index(vectors):
+    index = faiss.IndexFlatL2(vectors.shape[1])
+    index.add(vectors)
+    return index
+
+def search_similar(index, image_path, query_path):
+    img_paths = list(paths.list_images(image_path))
+    query_img_paths = list(paths.list_images(query_path))
+    images = [cv2.imread(path) for path in query_img_paths]
+    images = [transforms.ToPILImage()(image) for image in images]
+    vectors = Img2Vec().get_vec(images)
+    D, I = index.search(vectors, 4)
+    for i in range(len(D)):
+        if not os.path.exists(query_img_paths[i]+'_'):
+            os.mkdir(query_img_paths[i]+'_')
+        print(f'Similar image of {query_img_paths[i]}')
+        for j in I[i]:
+            print(f'\t {img_paths[j]}')
+            shutil.copy(img_paths[j], query_img_paths[i]+'_')
 
 if __name__ == "__main__":
     # hashes = create_hash()
@@ -101,4 +131,7 @@ if __name__ == "__main__":
     # hashes, tree = load_hashes_and_vptree()
     # search_near_duplicate(hashes, tree)
 
-    vectors, img_paths = create_image_vectors()
+    # vectors = create_image_vectors()
+    vectors = load_image_vectors()
+    index = create_faiss_index(vectors)
+    search_similar(index, 'images', 'query')
