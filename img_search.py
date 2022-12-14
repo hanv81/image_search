@@ -137,13 +137,18 @@ def parse_args():
 if __name__ == "__main__":
     mode, image_path, query_path = parse_args()
     if mode == 'duplicate':
-        hashes = create_hash(image_path)
-        tree = build_vptree(hashes)
+        if os.path.exists('vptree.pickle'):
+            hashes, tree = load_hashes_and_vptree()
+        else:
+            hashes = create_hash(image_path)
+            tree = build_vptree(hashes)
 
-        # hashes, tree = load_hashes_and_vptree()
         search_near_duplicate(hashes, tree)
     else:
-        vectors = create_image_vectors(image_path)
-        # vectors = load_image_vectors()
+        if os.path.exists('vectors.pickle'):
+            vectors = load_image_vectors()
+        else:
+            vectors = create_image_vectors(image_path)
+
         index = create_faiss_index(vectors)
         search_similar(index, image_path, query_path)
