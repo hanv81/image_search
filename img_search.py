@@ -4,6 +4,9 @@ from img2vec_pytorch import Img2Vec
 from dataset import ImageDataset
 from concurrent.futures import ThreadPoolExecutor
 from imutils import paths
+from PIL import Image
+from tqdm import tqdm
+import imagehash
 import numpy as np
 import cv2
 import time
@@ -14,23 +17,12 @@ import os
 import shutil
 import argparse
 
-def dhash(image, hashSize=8):
-	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	resized = cv2.resize(gray, (hashSize + 1, hashSize))
-	diff = resized[:, 1:] > resized[:, :-1]
-	h = sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
-	return h
-
-def convert_hash(h):
-	return int(np.array(h, dtype="float64"))
-
 def hamming(a, b):
-	return bin(int(a) ^ int(b)).count("1")
+	return a-b
 
 def hash_file(path):
-    image = cv2.imread(path)
-    h = dhash(image)
-    return convert_hash(h)
+    image = Image.open(path)
+    return imagehash.dhash(image, 8)
 
 def batch_hashing(hashes, file_paths):
     for path in file_paths:
@@ -44,10 +36,10 @@ def create_hash(image_path):
     t = time.time()
     batch_size = 100
     hashes = {}
-    imagePaths = list(paths.list_images(image_path))
+    image_paths = list(paths.list_images(image_path))
     with ThreadPoolExecutor() as executor:
-        for i in range(0, len(imagePaths), batch_size):
-            executor.submit(batch_hashing, hashes, imagePaths[i : i + batch_size])
+        for i in range(0, len(image_paths), batch_size):
+            executor.submit(batch_hashing, hashes, image_paths[i : i + batch_size])
 
     t = int(time.time()-t)
     print(t)
@@ -57,7 +49,7 @@ def create_hash(image_path):
     
     return hashes
 
-def build_vptree(hashes):    
+def build_vptree(hashes):
     print("Building VP-Tree...")
     points = list(hashes.keys())
     tree = vptree.VPTree(points, hamming)
@@ -86,13 +78,13 @@ def search_near_duplicate(hashes, tree):
                     print(f'\t{hashes[hh]} {d}')
 
 def create_image_vectors(image_path):
+    print('Creating image vectors')
     i2v = Img2Vec()
-    dataset = ImageDataset(image_path)
-    dataloader = DataLoader(dataset, batch_size=32)
+    to_pil = transforms.ToPILImage()
     vectors = None
-    for i, images in enumerate(dataloader):
-        print(f'Loading batch {i}')
-        images = [transforms.ToPILImage()(image) for image in images]
+    dataloader = DataLoader(ImageDataset(image_path), batch_size=32)
+    for images in tqdm(dataloader, desc='Processing batch'):
+        images = [to_pil(image) for image in images]
         if vectors is None:
             vectors = i2v.get_vec(images)
         else:
