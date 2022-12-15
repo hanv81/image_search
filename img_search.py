@@ -134,7 +134,7 @@ def parse_args():
     args = parser.parse_known_args()[0]
     return args.mode, args.images, args.query
 
-if __name__ == "__main__":
+def main():
     mode, image_path, query_path = parse_args()
     if mode == 'duplicate':
         if os.path.exists('vptree.pickle'):
@@ -152,3 +152,6 @@ if __name__ == "__main__":
 
         index = create_faiss_index(vectors)
         search_similar(index, image_path, query_path)
+
+if __name__ == "__main__":
+    main()
