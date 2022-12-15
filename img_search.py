@@ -90,10 +90,8 @@ def create_image_vectors(image_path):
     dataset = ImageDataset(image_path)
     dataloader = DataLoader(dataset, batch_size=32)
     vectors = None
-    img_paths = []
-    for i, (images, list_paths) in enumerate(dataloader):
+    for i, images in enumerate(dataloader):
         print(f'Loading batch {i}')
-        img_paths.extend(list_paths)
         images = [transforms.ToPILImage()(image) for image in images]
         if vectors is None:
             vectors = i2v.get_vec(images)

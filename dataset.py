@@ -11,6 +11,4 @@ class ImageDataset(Dataset):
         return len(self.list_paths)
 
     def __getitem__(self, i):
-        path = self.list_paths[i]
-        image = read_image(path)
-        return image, path
+        return read_image(self.list_paths[i])
