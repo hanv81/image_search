@@ -104,18 +104,19 @@ def create_faiss_index(vectors):
 def search_similar(index, image_path, query_path):
     img_paths = list(paths.list_images(image_path))
     query_img_paths = list(paths.list_images(query_path))
-    images = [transforms.ToPILImage()(cv2.imread(path)) for path in query_img_paths]
+    images = [Image.open(path) for path in query_img_paths]
     vectors = Img2Vec().get_vec(images)
     faiss.normalize_L2(vectors)
     k = 4
     D, I = index.search(vectors, k)
     for i in range(len(D)):
-        if not os.path.exists(query_img_paths[i]+'_'):
-            os.mkdir(query_img_paths[i]+'_')
-        print(f'Similar image of {query_img_paths[i]}')
+        query_img = query_img_paths[i]
+        if not os.path.exists(query_img + '_'):
+            os.mkdir(query_img + '_')
+        print(f'Similar image of {query_img}')
         for j in range(k):
             print(f'\t {img_paths[I[i][j]]} {D[i][j]}')
-            shutil.copy(img_paths[I[i][j]], query_img_paths[i]+'_')
+            shutil.copy(img_paths[I[i][j]], query_img + '_')
 
 def parse_args():
     parser = argparse.ArgumentParser()
