@@ -69,14 +69,21 @@ def load_image_vectors():
     vectors = pickle.loads(open("vectors.pickle", "rb").read())
     return vectors
 
-def search_near_duplicate(hashes, tree):
+def search_duplicate(hashes, tree):
+    if not os.path.exists('duplicate'):
+        os.mkdir('duplicate')
     for h in hashes.keys():
         results = tree.get_all_in_range(h, 4)
         if len(results) > 1:
-            print(f'{hashes[h]} have near-duplicate:')
+            duplicate_path = os.path.join('duplicate', os.path.basename(hashes[h][0]))
+            if not os.path.exists(duplicate_path):
+                os.mkdir(duplicate_path)
+            shutil.copy(hashes[h][0], duplicate_path)
+            print(f'{hashes[h]} have duplicate:')
             for d, hh in results:
                 if d > 0:
                     print(f'\t{hashes[hh]} {d}')
+                    shutil.copy(hashes[hh][0], duplicate_path)
 
 def create_image_vectors(image_path):
     print('Creating image vectors')
@@ -128,7 +135,7 @@ def search_similar(index, image_path, query_path):
                 data['query_image'].append(query_filename)
             data['similar_image'].append(os.path.basename(img_paths[I[i][j]]))
             data['similarity'].append(D[i][j])
-    print(data)
+
     df = pd.DataFrame(data)
     df.to_csv('similar.csv')
 
@@ -150,7 +157,7 @@ def main():
             hashes = create_hash(image_path)
             tree = build_vptree(hashes)
 
-        search_near_duplicate(hashes, tree)
+        search_duplicate(hashes, tree)
     else:
         if os.path.exists('vectors.pickle'):
             vectors = load_image_vectors()
