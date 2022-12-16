@@ -16,6 +16,7 @@ import faiss
 import os
 import shutil
 import argparse
+import pandas as pd
 
 def hamming(a, b):
 	return a-b
@@ -109,14 +110,27 @@ def search_similar(index, image_path, query_path):
     faiss.normalize_L2(vectors)
     k = 4
     D, I = index.search(vectors, k)
+    data = {'query_image': [], 'similar_image': [], 'similarity': []}
     for i in range(len(D)):
-        query_img = query_img_paths[i]
-        if not os.path.exists(query_img + '_'):
-            os.mkdir(query_img + '_')
-        print(f'Similar image of {query_img}')
+        query_path = query_img_paths[i]
+        query_filename = os.path.basename(query_path)
+        if not os.path.exists(query_path + '_'):
+            os.mkdir(query_path + '_')
+        print(f'Similar image of {query_path}')
         for j in range(k):
+            if D[i][j] >= .8:
+                continue
             print(f'\t {img_paths[I[i][j]]} {D[i][j]}')
-            shutil.copy(img_paths[I[i][j]], query_img + '_')
+            shutil.copy(img_paths[I[i][j]], query_path + '_')
+            if query_filename in data['query_image']:
+                data['query_image'].append('')
+            else:
+                data['query_image'].append(query_filename)
+            data['similar_image'].append(os.path.basename(img_paths[I[i][j]]))
+            data['similarity'].append(D[i][j])
+    print(data)
+    df = pd.DataFrame(data)
+    df.to_csv('similar.csv')
 
 def parse_args():
     parser = argparse.ArgumentParser()
