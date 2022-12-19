@@ -125,8 +125,6 @@ def search_similar(index, image_path, query_path):
             os.mkdir(query_path + '_')
         print(f'Similar image of {query_path}')
         for j in range(k):
-            if D[i][j] >= .8:
-                continue
             print(f'\t {img_paths[I[i][j]]} {D[i][j]}')
             shutil.copy(img_paths[I[i][j]], query_path + '_')
             if query_filename in data['query_image']:
