@@ -85,8 +85,8 @@ class DuplicateFinder:
         hasher = HashLib(hash_size)
         self.hash_controller = HashController(hasher)
 
-    def find_duplicate(self, path, hash_size):
-        self.hash_controller.search_duplicate(path, hash_size)
+    def find_duplicate(self, path, batch_size):
+        self.hash_controller.search_duplicate(path, batch_size)
 
     def _aggregate_result(self):
         pass
