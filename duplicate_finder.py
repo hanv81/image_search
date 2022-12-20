@@ -17,7 +17,7 @@ class HashLib:
         return imagehash.dhash(image, self.hash_size)
 
 class HashController:
-    def __init__(self, hasher) -> None:
+    def __init__(self, hasher):
         self.hasher = hasher
     
     def __load_hashes_and_vptree(self):

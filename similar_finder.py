@@ -18,11 +18,11 @@ class SimilarController:
         self.i2v = Img2Vec()
         self.dataloader = DataLoader(ImageDataset(image_path), batch_size=32)
 
-    def load_image_vectors(self):
+    def __load_image_vectors(self):
         vectors = pickle.loads(open("vectors.pickle", "rb").read())
         return vectors
 
-    def create_image_vectors(self):
+    def __create_image_vectors(self):
         print('Creating image vectors')
         to_pil = transforms.ToPILImage()
         vectors = None
@@ -38,18 +38,18 @@ class SimilarController:
         f.close()
         return vectors
 
-    def create_faiss_index(self):
+    def __create_faiss_index(self):
         if os.path.exists('vectors.pickle'):
-            vectors = self.load_image_vectors()
+            vectors = self.__load_image_vectors()
         else:
-            vectors = self.create_image_vectors()
+            vectors = self.__create_image_vectors()
 
         faiss.normalize_L2(vectors)
         self.index = faiss.IndexFlatIP(vectors.shape[1])
         self.index.add(vectors)
 
     def find_similar(self, query_path, k = 4):
-        self.create_faiss_index()
+        self.__create_faiss_index()
 
         img_paths = list(paths.list_images(self.image_path))
         query_img_paths = list(paths.list_images(query_path))
