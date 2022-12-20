@@ -2,15 +2,11 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from img2vec_pytorch import Img2Vec
 from dataset import ImageDataset
-from concurrent.futures import ThreadPoolExecutor
+from duplicate_finder import DuplicateFinder
 from imutils import paths
 from PIL import Image
 from tqdm import tqdm
-import imagehash
 import numpy as np
-import cv2
-import time
-import vptree
 import pickle
 import faiss
 import os
@@ -18,72 +14,9 @@ import shutil
 import argparse
 import pandas as pd
 
-def hamming(a, b):
-	return a-b
-
-def hash_file(path):
-    image = Image.open(path)
-    return imagehash.dhash(image, 8)
-
-def batch_hashing(hashes, file_paths):
-    for path in file_paths:
-        h = hash_file(path)
-        p = hashes.get(h, [])
-        p.append(path)
-        hashes[h] = p
-
-def create_hash(image_path):
-    print("Hashing images...")
-    t = time.time()
-    batch_size = 100
-    hashes = {}
-    image_paths = list(paths.list_images(image_path))
-    with ThreadPoolExecutor() as executor:
-        for i in range(0, len(image_paths), batch_size):
-            executor.submit(batch_hashing, hashes, image_paths[i : i + batch_size])
-
-    t = int(time.time()-t)
-    print(t)
-    f = open("hashes.pickle", "wb")
-    f.write(pickle.dumps(hashes))
-    f.close()
-    
-    return hashes
-
-def build_vptree(hashes):
-    print("Building VP-Tree...")
-    points = list(hashes.keys())
-    tree = vptree.VPTree(points, hamming)
-
-    f = open("vptree.pickle", "wb")
-    f.write(pickle.dumps(tree))
-    f.close()
-    return tree
-
-def load_hashes_and_vptree():
-    tree = pickle.loads(open("vptree.pickle", "rb").read())
-    hashes = pickle.loads(open("hashes.pickle", "rb").read())
-    return hashes, tree
-
 def load_image_vectors():
     vectors = pickle.loads(open("vectors.pickle", "rb").read())
     return vectors
-
-def search_duplicate(hashes, tree):
-    if not os.path.exists('duplicate'):
-        os.mkdir('duplicate')
-    for h in hashes.keys():
-        results = tree.get_all_in_range(h, 4)
-        if len(results) > 1:
-            duplicate_path = os.path.join('duplicate', os.path.basename(hashes[h][0]))
-            if not os.path.exists(duplicate_path):
-                os.mkdir(duplicate_path)
-            shutil.copy(hashes[h][0], duplicate_path)
-            print(f'{hashes[h]} have duplicate:')
-            for d, hh in results:
-                if d > 0:
-                    print(f'\t{hashes[hh]} {d}')
-                    shutil.copy(hashes[hh][0], duplicate_path)
 
 def create_image_vectors(image_path):
     print('Creating image vectors')
@@ -141,29 +74,26 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type = str, default = 'similar')
-    parser.add_argument('--images', type = str, default = 'images')
-    parser.add_argument('--query', type = str, default = 'query')
+    parser.add_argument('--image_path', type = str, default = 'images')
+    parser.add_argument('--query_path', type = str, default = 'query')
+    parser.add_argument('--hash_size', type = int, default = 8)
+    parser.add_argument('--batch_size', type = int, default = 32)
     args = parser.parse_known_args()[0]
-    return args.mode, args.images, args.query
+    return args
 
 def main():
-    mode, image_path, query_path = parse_args()
-    if mode == 'duplicate':
-        if os.path.exists('vptree.pickle'):
-            hashes, tree = load_hashes_and_vptree()
-        else:
-            hashes = create_hash(image_path)
-            tree = build_vptree(hashes)
-
-        search_duplicate(hashes, tree)
+    args = parse_args()
+    if args.mode == 'duplicate':
+        finder = DuplicateFinder(args.hash_size)
+        finder.find_duplicate(args.image_path, args.batch_size)
     else:
         if os.path.exists('vectors.pickle'):
             vectors = load_image_vectors()
         else:
-            vectors = create_image_vectors(image_path)
+            vectors = create_image_vectors(args.image_path)
 
         index = create_faiss_index(vectors)
-        search_similar(index, image_path, query_path)
+        search_similar(index, args.image_path, args.query_path)
 
 if __name__ == "__main__":
     main()
